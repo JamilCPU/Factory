@@ -6,6 +6,7 @@
 import type { OllamaToolDefinition } from '../ollama/client.js';
 import { WorkspaceTools } from '../tools/workspace.js';
 import { TerminalTools } from '../tools/terminal.js';
+import { GitTools } from '../tools/git.js';
 
 export type ToolExecutor = (
   args: Record<string, unknown>,
@@ -18,6 +19,7 @@ export class ToolRegistry {
   constructor(workspacePath: string) {
     const ws = new WorkspaceTools(workspacePath);
     const term = new TerminalTools(workspacePath);
+    const git = new GitTools(workspacePath);
 
     // ── Workspace tools ────────────────────────────────────────
 
@@ -125,6 +127,55 @@ export class ToolRegistry {
       },
       ['command'],
       async (a) => term.runCommand(a.command as string),
+    );
+
+    // ── Git tools ──────────────────────────────────────────────
+
+    this._register(
+      'git_status',
+      'Show the current git status including branch name and changed files',
+      {},
+      [],
+      async () => git.status(),
+    );
+
+    this._register(
+      'git_diff',
+      'Show the current git diff of unstaged changes',
+      {
+        staged: {
+          type: 'string',
+          description: 'Set to "true" to show staged changes instead',
+        },
+      },
+      [],
+      async (a) => git.diff(a.staged === 'true'),
+    );
+
+    this._register(
+      'git_log',
+      'Show recent git commit history',
+      {
+        count: {
+          type: 'string',
+          description: 'Number of commits to show (default 10)',
+        },
+      },
+      [],
+      async (a) => git.log(parseInt(a.count as string, 10) || 10),
+    );
+
+    this._register(
+      'git_commit',
+      'Stage all changes and create a git commit with the given message',
+      {
+        message: {
+          type: 'string',
+          description: 'The commit message',
+        },
+      },
+      ['message'],
+      async (a) => git.commit(a.message as string),
     );
   }
 
