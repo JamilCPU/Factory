@@ -2,3 +2,16 @@ node_modules/
 dist/
 .factory-sessions/
 *.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.keys
+*.db
+*.sqlite
+*.sqlite3
+build/
+bin/
+obj/
+.vs/
+.idea/
+.DS_Store

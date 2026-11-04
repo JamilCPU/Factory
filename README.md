@@ -1,228 +1,84 @@
 # Factory CLI
 
-A local AI coding assistant powered by Ollama.  
-Start one command, land in an interactive CLI, and let your local model read, search, edit, and run commands in your workspace — like Claude Code, but fully on your machine.
+A local AI coding assistant powered by [Ollama](https://ollama.com). It runs an interactive terminal session in which a locally hosted model can read, search and edit files in your workspace and run shell commands, with an approval step before anything is written. It is a small, self-contained take on tools like Claude Code that keeps all inference on your own machine.
 
----
+## Stack
 
-## Prerequisites
+- TypeScript on Node.js 18+ (ESM)
+- Ollama HTTP API for model access (default model `qwen2.5-coder:32b`)
+- `chalk` for terminal output, `diff` for edit previews
+- `esbuild` to bundle to a single file, `tsx` for development
 
-| Requirement | Why |
-|-------------|-----|
-| **Node.js >= 18** | Runtime for the CLI |
-| **Ollama** | Hosts the local model — install from [ollama.com](https://ollama.com) |
-| **A coding model** | e.g. `ollama pull qwen2.5-coder:32b` |
+## Running
 
-## Quick Start
+Prerequisites: Node.js 18 or newer, a running Ollama server, and a pulled coding model (for example `ollama pull qwen2.5-coder:32b`).
 
 ```bash
-# 1. Install dependencies and build
 npm install
-npm run bundle
-
-# 2. Register the global `factory` command
-npm link
-
-# 3. Make sure Ollama is running
-ollama serve          # in another terminal, if not already running
-
-# 4. Launch from any directory
-factory
+npm run bundle      # builds dist/factory.mjs
+npm link            # optional: registers the global `factory` command
+factory             # run from the workspace you want to work in
 ```
 
-Or during development:
+Without building:
 
 ```bash
-npm run dev                     # run via tsx (no build step)
-npx tsx src/cli.ts llama3       # specify a different model
+npm run dev                     # runs src/cli.ts via tsx
+npx tsx src/cli.ts llama3       # pass a model name as the first argument
 ```
 
-You will land in an interactive prompt:
+### Configuration
 
-```
-  Factory CLI — Local AI Coding Assistant
-  Workspace : C:\Users\you\project
-  Ollama    : http://localhost:11434
-  Model     : qwen2.5-coder:32b
-  Approval  : confirm
-  Type /help for commands
-
->
-```
-
-If the configured model is not found locally, the CLI will list your installed models and let you pick one interactively.
-
-Type naturally. The model can read your files, search the codebase, make edits, and run commands.
-
-## Global `factory` Command
-
-There are two ways `factory` is registered so you can launch it from any terminal:
-
-### 1. npm link (recommended)
-
-```bash
-cd F:\Dev\Factory
-npm run bundle
-npm link
-```
-
-This puts `factory` on your PATH via Node. Works in PowerShell, CMD, and any terminal.
-
-### 2. PowerShell profile alias
-
-If you also want a PS-native alias, add this to your `$PROFILE`:
-
-```powershell
-# Factory CLI - local AI coding assistant
-function factory { node "F:\Dev\Factory\dist\factory.mjs" @args }
-```
-
-Reload with `. $PROFILE` or open a new terminal.
-
-## Slash Commands
-
-| Command | Description |
-|---------|-------------|
-| `/help` | Show available commands |
-| `/model [name]` | Show or switch the active model |
-| `/models` | List all locally installed models |
-| `/tools` | List the tools the model can use |
-| `/approval [mode]` | Show or change approval mode (`auto`/`confirm`/`strict`) |
-| `/plan <task>` | Ask the model to create a step-by-step plan before execution |
-| `/todo` | Show the current plan and its progress |
-| `/status` | Show git status, touched files, and session info |
-| `/diff` | Show current git diff with color highlighting |
-| `/review` | Ask the model to review its own changes |
-| `/compact` | Compress older messages to save context window space |
-| `/sessions` | List saved conversation sessions |
-| `/resume <id>` | Resume a previous session |
-| `/clear` | Clear conversation, memory, and plan |
-| `/exit` | Exit the CLI |
-
-## Tools Available to the Model
-
-The agent gives the model these tools automatically:
-
-**Workspace**
-- **read_file** — read any file in the workspace (with line numbers)
-- **list_directory** — list files and directories
-- **search_files** — regex search across the codebase
-- **edit_file** — precise search-and-replace edits with diff preview
-- **create_file** — create new files
-
-**Terminal**
-- **run_command** — execute shell commands (with safety guards)
-
-**Git**
-- **git_status** — show branch and changed files
-- **git_diff** — show the current diff
-- **git_log** — show recent commit history
-- **git_commit** — stage all and commit
-
-All paths are scoped to the workspace. The model cannot escape the project directory.
-
-## Approval Modes
-
-Factory uses an approval system for safety. Change with `/approval <mode>`:
-
-| Mode | Behavior |
-|------|----------|
-| `auto` | All tool calls execute immediately |
-| `confirm` (default) | Reads/searches run silently; writes and commands need your approval |
-| `strict` | Every tool call requires your approval |
-
-When approval is needed, you'll see a prompt like:
-
-```
-  ⚠ Approval needed: Edit file: src/index.ts
-  - old code
-  + new code
-  Allow? [Y/n]
-```
-
-## Plan Mode
-
-Use `/plan <task description>` to have the model decompose a task into steps before executing anything. Then use `/todo` to track progress.
-
-```
-❯ /plan Add user authentication to the Express app
-
-  1. Read the current server setup
-  2. Install passport and related packages
-  3. Create auth middleware
-  4. Add login/register routes
-  5. Update the main app to use auth
-  6. Run tests
-
-  Plan created! Use /todo to view it.
-```
-
-## Repo Awareness
-
-On your first message, Factory automatically scans the workspace and builds a project map including:
-- directory structure
-- config files (package.json, tsconfig, etc.)
-- scripts and dependencies
-- recently modified files
-
-This gives the model repo-level awareness before it starts working.
-
-## Working Memory
-
-Factory tracks what happens during a session:
-- which files have been read or modified
-- key decisions made
-- last command output
-- a rolling summary of older conversation turns
-
-Use `/compact` to manually compress old messages, or it happens automatically after 30+ messages to preserve context window space.
-
-## Using Alongside Cursor
-
-Factory CLI operates on the same files Cursor has open. A typical workflow:
-
-1. Open your project in Cursor.
-2. Open a terminal *inside* Cursor (`` Ctrl+` ``).
-3. Type `factory` to start the CLI.
-4. Ask the agent to make changes — they appear instantly in Cursor's editor.
-5. Use `/status` and `/diff` to see what changed.
-6. Use `/review` to have the model inspect its own work.
-7. Use Cursor's diff view, git integration, and linting to review changes.
-
-## Configuration
-
-| Environment Variable | Default | Description |
-|---------------------|---------|-------------|
+| Environment variable | Default | Description |
+|----------------------|---------|-------------|
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama server address |
 | `FACTORY_MODEL` | `qwen2.5-coder:32b` | Default model name |
 | `FACTORY_APPROVAL` | `confirm` | Default approval mode |
 
-You can also pass the model name as the first CLI argument:
+If the configured model is not installed, the CLI lists local models and lets you pick one.
 
-```bash
-factory deepseek-coder-v2
+## Features
+
+**Tools available to the model**
+
+- Workspace: `read_file`, `list_directory`, `search_files` (regex), `edit_file` (search and replace with diff preview), `create_file`
+- Terminal: `run_command`
+- Git: `git_status`, `git_diff`, `git_log`, `git_commit`
+
+**Slash commands**
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show available commands |
+| `/model [name]`, `/models` | Show or switch the model; list installed models |
+| `/tools` | List the tools the model can use |
+| `/approval [mode]` | Show or change the approval mode |
+| `/plan <task>`, `/todo` | Have the model write a step-by-step plan; show its progress |
+| `/status`, `/diff`, `/review` | Git status, colored diff, and a model review of its own changes |
+| `/compact` | Summarize older messages to save context |
+| `/sessions`, `/resume <id>` | List and resume saved conversations |
+| `/clear`, `/exit` | Reset the conversation; quit |
+
+**Approval modes** (`auto`, `confirm`, `strict`): in `confirm` (the default), reads and searches run silently while writes and commands ask for approval; `strict` asks for every tool call; `auto` asks for none.
+
+**Repo awareness and memory**: on the first message the CLI builds a project map (directory structure, config files, scripts, recently modified files). It tracks files read or modified and recent command output, and compacts older turns automatically after about 30 messages. Sessions are saved to `.factory-sessions/` in the workspace.
+
+**Safety**: file paths are confined to the workspace, obviously destructive commands are blocked, commands have a 60-second timeout and a 512 KB output cap, and `create_file` will not silently overwrite existing files.
+
+## Project layout
+
+```
+src/cli.ts          interactive prompt and slash commands
+src/agent/          agent loop, planner, memory, approval, tool registry, tool-call parser
+src/ollama/         Ollama client
+src/tools/          workspace, terminal and git tools
+src/context/        repository map
+src/session/        session persistence
 ```
 
-## Session Persistence
+## Status
 
-Conversations are auto-saved to `.factory-sessions/` in the workspace.  
-Use `/sessions` to list them and `/resume <id>` to pick up where you left off.
-
-## Safety
-
-- All file operations are jailed to the workspace directory.
-- Dangerous command patterns (e.g. `rm -rf /`) are blocked.
-- Commands have a 60-second timeout and 512 KB output cap.
-- The model cannot silently overwrite existing files via `create_file`.
-- Write operations require explicit approval in `confirm` and `strict` modes.
-
-## Building
-
-```bash
-npm run bundle   # bundle to dist/factory.mjs (single file, fast)
-npm run build    # full tsc compile to dist/ (for development)
-npm start        # run the bundled version
-```
+Early-stage personal project (version 0.1.0). There is no automated test suite yet.
 
 ## License
 
